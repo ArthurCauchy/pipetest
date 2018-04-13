@@ -6,7 +6,7 @@
 /*   By: acauchy <acauchy@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2018/04/11 11:55:40 by acauchy           #+#    #+#             */
-/*   Updated: 2018/04/11 13:38:12 by acauchy          ###   ########.fr       */
+/*   Updated: 2018/04/13 10:17:26 by acauchy          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,12 +21,7 @@ static void exit_error(char *errmsg)
 	exit(1);
 }
 
-/*
-** role :
-** 1 : read
-** 2 : write
-*/
-static int	start_process(char *path, int *pipefd, int role)
+static int	start_process(char *path, int inputfd, int outputfd)
 {
 	pid_t	pid;
 	char	*args[2] = {strdup(path), NULL};
@@ -35,17 +30,17 @@ static int	start_process(char *path, int *pipefd, int role)
 		exit_error("fork() error");
 	if (pid == 0)
 	{
-		if (role == 1)
+		if (inputfd != 0)
 		{
-			close(pipefd[1]);
-			close(0);
-			dup(pipefd[0]);
+			if (close(0) == -1)
+				exit_error("close(stdin) error");
+			dup(inputfd);
 		}
-		else if (role == 2)
+		else if (outputfd != 1)
 		{
-			close(pipefd[0]);
-			close(1);
-			dup(pipefd[1]);
+			if (close(1) == -1)
+				exit_error("close(stdout) error");
+			dup(outputfd);
 		}
 		execve(path, args, NULL);
 	}
@@ -61,7 +56,7 @@ int			main(void)
 	if (pipe(pipefd) == -1)
 		exit_error("pipe() error");
 	printf("read end : %d, write end : %d\n", pipefd[0], pipefd[1]);
-	ls_pid = start_process("/bin/ls", pipefd, 2);
-	cat_pid = start_process("/bin/cat", pipefd, 1);
+	ls_pid = start_process("/bin/ls", 0, pipefd[1]);
+	cat_pid = start_process("/bin/cat", pipefd[0], 1);
 	return (0);
 }
